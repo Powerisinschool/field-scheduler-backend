@@ -1,0 +1,215 @@
+definitions:
+  handlers.BasicErrorResponse:
+    properties:
+      error:
+        default: An error occurred
+        type: string
+    type: object
+  handlers.BasicSuccessResponse:
+    properties:
+      message:
+        default: Operation successful
+        type: string
+    type: object
+  handlers.CreateEntryRequest:
+    properties:
+      schedule_date:
+        default: YYYY-MM-DD
+        description: Expecting YYYY-MM-DD
+        type: string
+      start_time:
+        default: HH:MM:SS
+        description: Expecting HH:MM:SS
+        type: string
+      task_description:
+        default: task description
+        description: Expecting "task description"
+        type: string
+    required:
+    - schedule_date
+    - start_time
+    - task_description
+    type: object
+  models.Conductor:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  models.ScheduleEntry:
+    properties:
+      card_id:
+        type: string
+      conductor_name:
+        type: string
+      id:
+        type: string
+      location:
+        type: string
+      schedule_date:
+        type: string
+      start_time:
+        type: string
+      task_description:
+        type: string
+    type: object
+  services.MapBlocksResponse:
+    properties:
+      address:
+        type: string
+      blocks_count:
+        type: integer
+      polygons:
+        description: 'Nested array: [Polygon][Point][Lat/Lon]'
+        items:
+          items:
+            items:
+              format: float64
+              type: number
+            type: array
+          type: array
+        type: array
+    type: object
+info:
+  contact: {}
+paths:
+  /conductors:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all conductors
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Conductor'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: List conductors
+      tags:
+      - conductors
+  /maps/blocks:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.MapBlocksResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: List blocks in Lekki Phase 1
+      tags:
+      - map
+  /schedules:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of schedule entries for a given date range
+      parameters:
+      - description: Start date in YYYY-MM-DD format
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date in YYYY-MM-DD format
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ScheduleEntry'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: List schedule entries
+      tags:
+      - schedules
+    post:
+      consumes:
+      - application/json
+      description: Create a schedule entry for a specified date
+      parameters:
+      - description: Schedule entry details
+        in: body
+        name: default
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateEntryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ScheduleEntry'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Create a schedule entry
+      tags:
+      - schedules
+  /schedules/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a PDF file to sync schedule entries. Optionally specify
+        a year to filter the entries.
+      parameters:
+      - description: PDF file to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Optional year to filter entries (e.g., 2026)
+        in: formData
+        name: year
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BasicSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Upload a schedule PDF
+      tags:
+      - schedules
+swagger: "2.0"
