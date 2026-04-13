@@ -15,15 +15,15 @@ func NewMapHandler(parserService *services.ParserService) *MapHandler {
 	return &MapHandler{parserService: parserService}
 }
 
-// GetBlocks godoc
-// @Summary List blocks in Lekki Phase 1
+// GetGeneratedBlocks godoc
+// @Summary List generated blocks in Lekki Phase 1
 // @Tags map
 // @Accept json
 // @Produce json
 // @Success 200 {object} services.MapBlocksResponse
 // @Failure 500 {object} BasicErrorResponse
-// @Router /maps/blocks [get]
-func (h *MapHandler) GetBlocks(c *gin.Context) {
+// @Router /maps/generated-blocks [get]
+func (h *MapHandler) GetGeneratedBlocks(c *gin.Context) {
 	// Call Python service to retrieve latest OSMnx blocks
 	data, err := h.parserService.GetMapBlocks(c)
 	if err != nil {
@@ -31,4 +31,8 @@ func (h *MapHandler) GetBlocks(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, data)
+}
+
+func (h *MapHandler) GetBlocks(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "This endpoint will return user-defined blocks in the future."})
 }

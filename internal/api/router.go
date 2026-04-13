@@ -62,6 +62,7 @@ func SetupRouter(scheduleHandler *handlers.ScheduleHandler, conductorHandler *ha
 		maps := api.Group("/maps")
 		{
 			maps.GET("/blocks", mapHandler.GetBlocks)
+			maps.GET("/generated-blocks", mapHandler.GetGeneratedBlocks)
 		}
 	}
 

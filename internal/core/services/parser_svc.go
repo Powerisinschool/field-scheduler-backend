@@ -29,6 +29,7 @@ func (s *ParserService) GetMapBlocks(ctx context.Context) (*models.MapBlocksResp
 	s.mu.RLock()
 	if s.mapCache != nil && time.Since(s.mapCache.LastUpdated) < 14*24*time.Hour {
 		defer s.mu.RUnlock()
+		// time.Sleep(3 * time.Second) // Simulate processing delay for demonstration TODO: Remove this in production
 		return &s.mapCache.Data, nil
 	}
 	s.mu.RUnlock()
