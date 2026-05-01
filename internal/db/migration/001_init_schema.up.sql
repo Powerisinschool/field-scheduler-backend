@@ -43,7 +43,7 @@ CREATE TABLE schedule_entries (
 
 CREATE TABLE cards (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    card_name text NOT NULL,
+    card_name VARCHAR(255) UNIQUE NOT NULL,
     description text,
     created_at timestamp with time zone DEFAULT now(),
     zoom_level integer, -- Optional field to specify the zoom level for the map when this card is selected. This allows for better user experience by automatically adjusting the map view to fit the relevant blocks.
@@ -54,7 +54,7 @@ CREATE TABLE cards (
 CREATE TABLE blocks (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     block_name text NOT NULL,
-    geometry_type text NOT NULL,
+    geometry_type text NOT NULL DEFAULT 'Polygon', -- This field specifies the type of geometry (e.g., Polygon, LineString, etc.) for the block. We will enforce that it can only be 'Polygon' or 'LineString' using a CHECK constraint.
     coordinates jsonb NOT NULL,
     metadata jsonb,
     created_at timestamp with time zone DEFAULT now(),

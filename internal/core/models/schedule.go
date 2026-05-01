@@ -17,6 +17,13 @@ type ScheduleEntry struct {
 	CardID          string `json:"card_id,omitempty"`
 }
 
+type UpdateScheduleEntryParams struct {
+	ID              string `json:"id" binding:"required"`
+	ScheduleDate    string `json:"schedule_date,omitempty" binding:"required,date_format=2006-01-02"`
+	StartTime       string `json:"start_time,omitempty" binding:"required,date_format=HH:MM:SS"`
+	TaskDescription string `json:"task_description,omitempty" binding:"required"`
+}
+
 func pgTimeToString(pt pgtype.Time) string {
 	if !pt.Valid {
 		return ""

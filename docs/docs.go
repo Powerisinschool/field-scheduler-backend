@@ -58,12 +58,157 @@ const docTemplate = `{
                 "tags": [
                     "map"
                 ],
-                "summary": "List blocks in Lekki Phase 1",
+                "summary": "List user-defined blocks",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/services.MapBlocksResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Block"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Create a new user-defined block",
+                "parameters": [
+                    {
+                        "description": "Block creation request",
+                        "name": "block",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateBlockRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Block"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/blocks/upload": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Upload a CSV file to sync blocks",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "CSV file with block data",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/cards": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "List user-defined cards (placeholder)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Card"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/generated-blocks": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "List generated blocks in Lekki Phase 1",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MapBlocksResponse"
                         }
                     },
                     "500": {
@@ -154,6 +299,52 @@ const docTemplate = `{
                 "responses": {
                     "201": {
                         "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.ScheduleEntry"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/:id": {
+            "put": {
+                "description": "Update an existing schedule entry",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedules"
+                ],
+                "summary": "Update a schedule entry",
+                "parameters": [
+                    {
+                        "description": "Schedule entry details",
+                        "name": "default",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateScheduleEntryParams"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.ScheduleEntry"
                         }
@@ -268,6 +459,47 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Block": {
+            "type": "object",
+            "properties": {
+                "card_id": {
+                    "description": "Optional association to a card, can be null",
+                    "type": "string"
+                },
+                "coordinates": {
+                    "description": "For Polygon and LineString: [[lon, lat], [lon, lat], ...]",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "number",
+                            "format": "float64"
+                        }
+                    }
+                },
+                "geometry_type": {
+                    "description": "\"Polygon\" or \"LineString\"",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Card": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Conductor": {
             "type": "object",
             "properties": {
@@ -276,6 +508,55 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "models.CreateBlockRequest": {
+            "type": "object",
+            "required": [
+                "coordinates",
+                "geometry_type",
+                "name"
+            ],
+            "properties": {
+                "coordinates": {
+                    "description": "Expecting array of [lon, lat] pairs",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "number",
+                            "format": "float64"
+                        }
+                    }
+                },
+                "geometry_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MapBlocksResponse": {
+            "type": "object",
+            "properties": {
+                "blocks_count": {
+                    "type": "integer"
+                },
+                "polygons": {
+                    "description": "Nested array: [Polygon][Point][Lat/Lon]",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "number",
+                                "format": "float64"
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -305,28 +586,20 @@ const docTemplate = `{
                 }
             }
         },
-        "services.MapBlocksResponse": {
+        "models.UpdateScheduleEntryParams": {
             "type": "object",
             "properties": {
-                "address": {
+                "id": {
                     "type": "string"
                 },
-                "blocks_count": {
-                    "type": "integer"
+                "schedule_date": {
+                    "type": "string"
                 },
-                "polygons": {
-                    "description": "Nested array: [Polygon][Point][Lat/Lon]",
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "array",
-                            "items": {
-                                "type": "number",
-                                "format": "float64"
-                            }
-                        }
-                    }
+                "start_time": {
+                    "type": "string"
+                },
+                "task_description": {
+                    "type": "string"
                 }
             }
         }

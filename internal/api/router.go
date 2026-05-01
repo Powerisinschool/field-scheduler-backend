@@ -4,6 +4,7 @@ import (
 	"field-scheduler-backend/internal/api/handlers"
 	"net/http"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	docs "field-scheduler-backend/docs" // swagger docs
@@ -14,6 +15,8 @@ import (
 
 func SetupRouter(scheduleHandler *handlers.ScheduleHandler, conductorHandler *handlers.ConductorHandler, venueHandler *handlers.VenueHandler, mapHandler *handlers.MapHandler) *gin.Engine {
 	router := gin.Default()
+
+	router.Use(cors.Default())
 
 	docs.SwaggerInfo.Title = "Field Scheduler API"
 	docs.SwaggerInfo.Description = "API for managing field schedules, conductors, and venues."
@@ -48,6 +51,7 @@ func SetupRouter(scheduleHandler *handlers.ScheduleHandler, conductorHandler *ha
 		{
 			schedules.GET("/", scheduleHandler.ListEntries)
 			schedules.POST("/", scheduleHandler.CreateEntry)
+			//schedules.PUT("/:id", scheduleHandler.UpdateEntry)
 
 			schedules.POST("/upload", scheduleHandler.UploadPDF)
 		}
@@ -61,8 +65,14 @@ func SetupRouter(scheduleHandler *handlers.ScheduleHandler, conductorHandler *ha
 		}
 		maps := api.Group("/maps")
 		{
+			maps.GET("/cards", mapHandler.GetCards)
 			maps.GET("/blocks", mapHandler.GetBlocks)
+			maps.POST("/blocks", mapHandler.CreateBlock)
+
+			maps.POST("/blocks/upload", mapHandler.UploadBlocksCSV)
+
 			maps.GET("/generated-blocks", mapHandler.GetGeneratedBlocks)
+
 		}
 	}
 

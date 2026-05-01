@@ -16,6 +16,16 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
+type BlockByStreetsRequest struct {
+	Streets []string `json:"streets"`
+}
+
+type BlockByStreetsResponse struct {
+	RequestedStreets []string    `json:"requested_streets"`
+	MatchScore       float64     `json:"match_score"`
+	Coordinates      [][]float64 `json:"coordinates"` // [[lat, lon], ...]
+}
+
 func (c *Client) CallParsePDF(ctx context.Context, data []byte) ([]models.ParsedEntry, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -71,6 +81,33 @@ func (c *Client) CallFetchBlocks(ctx context.Context) (*models.MapBlocksResponse
 	}
 
 	var result models.MapBlocksResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode python response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (c *Client) CallFetchBlockByStreets(ctx context.Context, streets []string) (*BlockByStreetsResponse, error) {
+	jsonData, _ := json.Marshal(BlockByStreetsRequest{Streets: streets})
+
+	req, err := http.NewRequestWithContext(ctx, "POST", c.BaseURL+"/fetch/block-by-topology", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("python service returned status %d", resp.StatusCode)
+	}
+
+	var result BlockByStreetsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode python response: %w", err)
 	}

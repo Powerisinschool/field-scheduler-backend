@@ -15,16 +15,18 @@ ORDER BY schedule_date ASC, start_time ASC;
 DELETE FROM schedule_entries
 WHERE schedule_date >= $1 AND schedule_date <= $2;
 
--- -- name: GetScheduleConductorByName :one
--- SELECT id FROM conductors
--- WHERE full_name ILIKE $1 LIMIT 1;
+-- name: GetOrCreateCard :one
+INSERT INTO cards (card_name)
+VALUES ($1)
+ON CONFLICT (card_name) DO UPDATE SET card_name = EXCLUDED.card_name
+RETURNING *;
 
--- -- name: CreateScheduleConductor :one
--- INSERT INTO conductors (
---     full_name
+-- -- name: CreateBlock :one
+-- INSERT INTO blocks (
+--     block_name, geometry_type, coordinates, card_id
 -- ) VALUES (
---     $1
--- ) RETURNING id;
+--     $1, $2, $3, $4
+-- ) RETURNING *;
 
 -- name: ListUniqueTaskDescriptions :many
 SELECT DISTINCT task_description FROM schedule_entries

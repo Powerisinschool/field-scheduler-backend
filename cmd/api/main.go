@@ -34,16 +34,17 @@ func main() {
 	rawPythonClient := python_api.Client{BaseURL: cfg.ParserServiceUrl, HTTPClient: &http.Client{}}
 
 	// 5. Initialize Services
-	parserService := services.NewParserService(&rawPythonClient)
+	parserService := services.NewParserService(&rawPythonClient, repo)
 	conductorService := services.NewConductorService(repo)
 	venueService := services.NewVenueService(repo)
 	scheduleService := services.NewScheduleService(repo)
+	blockService := services.NewBlockService(repo)
 
 	// 6. Initialize Handlers
 	conductorHandler := handlers.NewConductorHandler(conductorService)
 	venueHandler := handlers.NewVenueHandler(venueService)
 	scheduleHandler := handlers.NewScheduleHandler(scheduleService, conductorService, parserService, venueService)
-	mapHandler := handlers.NewMapHandler(parserService)
+	mapHandler := handlers.NewMapHandler(parserService, blockService)
 
 	// 7. Setup Router
 	router := api.SetupRouter(scheduleHandler, conductorHandler, venueHandler, mapHandler)

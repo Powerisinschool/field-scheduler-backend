@@ -63,6 +63,28 @@ func (q *Queries) DeleteScheduleEntriesByDateRange(ctx context.Context, arg Dele
 	return err
 }
 
+const getOrCreateCard = `-- name: GetOrCreateCard :one
+INSERT INTO cards (card_name)
+VALUES ($1)
+ON CONFLICT (card_name) DO UPDATE SET card_name = EXCLUDED.card_name
+RETURNING id, card_name, description, created_at, zoom_level, center_coordinates, color
+`
+
+func (q *Queries) GetOrCreateCard(ctx context.Context, cardName string) (Card, error) {
+	row := q.db.QueryRow(ctx, getOrCreateCard, cardName)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.CardName,
+		&i.Description,
+		&i.CreatedAt,
+		&i.ZoomLevel,
+		&i.CenterCoordinates,
+		&i.Color,
+	)
+	return i, err
+}
+
 const listScheduleEntries = `-- name: ListScheduleEntries :many
 SELECT id, schedule_date, start_time, task_description, conductor_id, venue_id, created_at FROM schedule_entries
 WHERE schedule_date >= $1 
@@ -105,24 +127,20 @@ func (q *Queries) ListScheduleEntries(ctx context.Context, arg ListScheduleEntri
 
 const listUniqueTaskDescriptions = `-- name: ListUniqueTaskDescriptions :many
 
-
 SELECT DISTINCT task_description FROM schedule_entries
 ORDER BY task_description ASC
 `
 
-// -- name: GetScheduleConductorByName :one
-// SELECT id FROM conductors
-// WHERE full_name ILIKE $1 LIMIT 1;
-// -- name: CreateScheduleConductor :one
-// INSERT INTO conductors (
+// -- name: CreateBlock :one
+// INSERT INTO blocks (
 //
-//	full_name
+//	block_name, geometry_type, coordinates, card_id
 //
 // ) VALUES (
 //
-//	$1
+//	$1, $2, $3, $4
 //
-// ) RETURNING id;
+// ) RETURNING *;
 func (q *Queries) ListUniqueTaskDescriptions(ctx context.Context) ([]string, error) {
 	rows, err := q.db.Query(ctx, listUniqueTaskDescriptions)
 	if err != nil {

@@ -1,13 +1,33 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import io
+import re
+import json
+import difflib
 import cv2
 import numpy as np
-import pytesseract
-from pdf2image import convert_from_bytes
 import pandas as pd
-import osmnx as ox
+import pytesseract
 import networkx as nx
+import geopandas as gpd
+from pdf2image import convert_from_bytes
+from shapely.geometry import Polygon
+from shapely.ops import polygonize, unary_union
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from pydantic import BaseModel
+from typing import List
+import city2graph as c2g
+
+# Import your city2graph module here
+# import city2graph 
 
 app = FastAPI(title="Field Scheduler Parser Service")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+# ==========================================
+# 1. PDF SCHEDULE PARSING & OCR
+# ==========================================
 
 def enhance_cell_for_ocr(cell_crop):
     cell_crop = cv2.resize(cell_crop, None, fx=2.5, fy=2.5, interpolation=cv2.INTER_CUBIC)
@@ -108,12 +128,9 @@ def detect_table_structure_from_pdf_bytes(pdf_bytes: bytes):
 
 def flatten_schedule_data(data):
     if len(data) <= 1:
-        return[]
+        return []
         
-    # data[0] is header, data[1:] are the rows. 
-    # We load it directly into pandas instead of going through a CSV file
     df = pd.DataFrame(data[1:])
-    
     parsed_blocks = []
     current_block =[]
 
@@ -128,16 +145,16 @@ def flatten_schedule_data(data):
     if current_block:
         parsed_blocks.append(current_block)
 
-    flat_schedule = []
+    flat_schedule =[]
 
     for block in parsed_blocks:
-        columns_lists = [[],[], [], [], [],[]]
+        columns_lists = [[], [], [], [], [],[]]
         
         for row in block:
             for col_idx in range(6):
                 val = row[col_idx] if col_idx < len(row) else ""
                 if pd.notna(val) and str(val).strip() != "":
-                    parts =[p.strip() for p in str(val).split('\n') if p.strip()]
+                    parts = [p.strip() for p in str(val).split('\n') if p.strip()]
                     columns_lists[col_idx].extend(parts)
                     
         N = max((len(col) for col in columns_lists[0:5]), default=1)
@@ -169,68 +186,236 @@ def flatten_schedule_data(data):
 async def parse_pdf(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
-    
     try:
-        # Read the PDF into memory
         pdf_bytes = await file.read()
-        
-        # Extract raw grid
         raw_data = detect_table_structure_from_pdf_bytes(pdf_bytes)
-        
-        # Flatten structure into JSON dicts
         flat_schedule = flatten_schedule_data(raw_data)
-        
         return flat_schedule
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-LEKKI_ADDRESS = "24 Abike Sulaiman St, Lekki Phase I, Lekki 106104, Lagos"
+
+# ==========================================
+# 2. GIS MAP PARSING & TOPOLOGY
+# ==========================================
+
+LEKKI_POLYGON = Polygon([
+    (3.482269, 6.448432), (3.482871, 6.432581), (3.461505, 6.429083),
+    (3.453218, 6.437141), (3.453329, 6.449450), (3.456248, 6.450003),
+    (3.460391, 6.447214), (3.469272, 6.448598)
+])
+
+MAP_CACHE = {}
+
+def normalize_street_names(name: str) -> list[str]:
+    """Extracts core names, handles parentheses, and strips suffixes."""
+    if not isinstance(name, str):
+        return[]
+    
+    name = name.lower()
+    alt_names = re.findall(r'\((.*?)\)', name)
+    base_name = re.sub(r'\(.*?\)', '', name)
+    raw_variations = [base_name] + alt_names
+    
+    cleaned_variations =[]
+    suffixes = r'\b(street|st|crescent|cres|drive|dr|road|rd|avenue|ave|close|cl|way|lane|ln|highway|hwy|boulevard|blvd)\b'
+    
+    for var in raw_variations:
+        var = re.sub(r'[^\w\s]', '', var)
+        var = re.sub(suffixes, '', var)
+        var = re.sub(r'\bthe\b', '', var)
+        var = re.sub(r'\s+', ' ', var).strip()
+        if var:
+            cleaned_variations.append(var)
+            
+    return cleaned_variations
+
+def my_city2graph_fetch_function(polygon):
+    return c2g.load_overture_data(area=polygon, types=["segment"])['segment']
+
+def get_lekki_city2graph():
+    """Fetches city2graph data and builds a NetworkX graph."""
+    if "graph" in MAP_CACHE:
+        return MAP_CACHE["graph"], MAP_CACHE["gdf"]
+
+    try:
+        df = my_city2graph_fetch_function(LEKKI_POLYGON)
+    except Exception as e:
+        raise Exception(f"Failed to fetch city2graph data: {e}")
+
+    G = nx.MultiGraph()
+    G.graph['crs'] = "EPSG:4326"
+    
+    for idx, row in df.iterrows():
+        connectors = row.get('connectors')
+        geom = row.get('geometry')
+        
+        names_dict = row.get('names', {})
+        primary = row.get('primary_name', '')
+        
+        all_names = [primary] if primary else[]
+        if isinstance(names_dict, dict):
+            all_names.extend([v for k, v in names_dict.items() if v])
+            
+        if isinstance(connectors, list) and len(connectors) >= 2:
+            u = connectors[0]['connector_id']
+            v = connectors[-1]['connector_id']
+            G.add_edge(u, v, key=row['id'], geometry=geom, names=all_names)
+
+    gdf = gpd.GeoDataFrame(df, geometry='geometry', crs="EPSG:4326")
+
+    MAP_CACHE["graph"] = G
+    MAP_CACHE["gdf"] = gdf
+    
+    return G, gdf
+
+class StreetQuery(BaseModel):
+    streets: List[str]
+
+@app.post("/fetch/block-by-topology")
+async def fetch_block_by_topology(query: StreetQuery):
+    try:
+        G, _ = get_lekki_city2graph()
+        
+        query_variants = {}
+        for req_street in query.streets:
+            query_variants[req_street] = normalize_street_names(req_street)
+            
+        subgraph_edges =[]
+        
+        for u, v, key, data in G.edges(keys=True, data=True):
+            edge_names_raw = data.get('names', [])
+            edge_norms =[]
+            for en in edge_names_raw:
+                edge_norms.extend(normalize_street_names(en))
+            
+            if not edge_norms:
+                continue
+                
+            matched = False
+            for req_street, req_norms in query_variants.items():
+                for rn in req_norms:
+                    for en in edge_norms:
+                        if rn == en: matched = True
+                        elif (len(rn) >= 5 and rn in en) or (len(en) >= 5 and en in rn): matched = True
+                        elif len(rn) >= 4 and difflib.SequenceMatcher(None, rn, en).ratio() > 0.85: matched = True
+                        
+                        if matched:
+                            subgraph_edges.append((u, v, key))
+                            break
+                    if matched: break
+                if matched: break
+
+        if not subgraph_edges:
+             raise HTTPException(status_code=404, detail="Requested streets not found in graph.")
+
+        H = G.edge_subgraph(subgraph_edges)
+        H_undirected = nx.Graph(H)
+        
+        try:
+            cycles = nx.cycle_basis(H_undirected)
+        except Exception:
+            cycles =[]
+            
+        if not cycles:
+            raise HTTPException(status_code=404, detail="Streets found, but they do not form a closed block.")
+            
+        best_cycle = None
+        best_score = -1
+        
+        for cycle in cycles:
+            cycle_matched_requests = set()
+            for i in range(len(cycle)):
+                u = cycle[i]
+                v = cycle[(i + 1) % len(cycle)]
+                
+                edge_data = H.get_edge_data(u, v)
+                if not edge_data: continue
+                
+                for key, data in edge_data.items():
+                    edge_names_raw = data.get('names',[])
+                    edge_norms =[]
+                    for en in edge_names_raw:
+                        edge_norms.extend(normalize_street_names(en))
+                        
+                    for req_street, req_norms in query_variants.items():
+                        if req_street in cycle_matched_requests: continue
+                        matched = False
+                        for rn in req_norms:
+                            for en in edge_norms:
+                                if rn == en: matched = True
+                                elif (len(rn) >= 5 and rn in en) or (len(en) >= 5 and en in rn): matched = True
+                                elif len(rn) >= 4 and difflib.SequenceMatcher(None, rn, en).ratio() > 0.85: matched = True
+                                if matched: break
+                            if matched: break
+                        if matched:
+                            cycle_matched_requests.add(req_street)
+            
+            score = len(cycle_matched_requests)
+            adjusted_score = score - (len(cycle) * 0.01)
+            
+            if adjusted_score > best_score:
+                best_score = adjusted_score
+                best_cycle = cycle
+
+        if not best_cycle:
+            raise HTTPException(status_code=404, detail="Could not resolve a valid block from the provided streets.")
+
+        cycle_lines =[]
+        for i in range(len(best_cycle)):
+            u = best_cycle[i]
+            v = best_cycle[(i + 1) % len(best_cycle)]
+            edge_data = G.get_edge_data(u, v)
+            if edge_data:
+                first_key = list(edge_data.keys())[0]
+                geom = edge_data[first_key].get('geometry')
+                if geom: cycle_lines.append(geom)
+
+        polys = list(polygonize(unary_union(cycle_lines)))
+        if not polys:
+             raise HTTPException(status_code=500, detail="Failed to assemble polygon.")
+             
+        gs = gpd.GeoSeries([polys[0]], crs="EPSG:4326")
+        coords = list(gs.iloc[0].exterior.coords)
+        formatted_coords = [[lat, lon] for lon, lat in coords]
+        
+        return {
+            "requested_streets": query.streets,
+            "match_score": best_score,
+            "coordinates": formatted_coords
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/fetch/map-blocks")
-async def fetch_map_blocks(radius: int = 1000):
-    """
-    Fetches street blocks from OSMnx around the hardcoded Lekki address.
-    Returns a list of polygons for the frontend to render.
-    """
+async def fetch_map_blocks():
+    """Generates all valid polygons in the bounding box to render the background map."""
     try:
-        # 1. Download graph
-        G = ox.graph_from_address(LEKKI_ADDRESS, dist=radius, network_type='all')
+        _, gdf = get_lekki_city2graph()
         
-        # 2. Convert to an undirected graph to easily find loops
-        Gu = ox.utils_graph.get_undirected(G)
-
-        G_simple = nx.Graph(Gu)
+        merged_lines = unary_union(gdf['geometry'].tolist())
+        lines_list = list(merged_lines.geoms) if hasattr(merged_lines, 'geoms') else [merged_lines]
         
-        # 3. Find all closed loops (cycles) in the network
-        # Each cycle is a list of Node IDs that form a block
-        cycles = nx.minimum_cycle_basis(G_simple)
+        polygons = list(polygonize(lines_list))
+        blocks = gpd.GeoDataFrame(geometry=polygons, crs="EPSG:4326")
         
-        output_polygons = []
+        # Temporary projection to UTM zone 31N (Lagos) for accurate area filtering in sq meters
+        blocks_metric = blocks.to_crs("EPSG:32631")
+        valid_indices = (blocks_metric.area > 500) & (blocks_metric.area < 500000)
+        blocks_filtered = blocks[valid_indices]
         
-        # 4. Extract coordinates for each block
-        for cycle in cycles:
-            # A valid block needs at least 3 intersections
-            if len(cycle) > 2:
-                block_coords = []
-                
-                for node_id in cycle:
-                    # Extract the GPS coordinates directly from the node data
-                    lat = Gu.nodes[node_id]['y']
-                    lon = Gu.nodes[node_id]['x']
-                    
-                    # Format as [lat, lon] for Leaflet/Mapbox
-                    block_coords.append([lat, lon])
-                
-                output_polygons.append(block_coords)
-                
+        output_polygons =[]
+        for poly in blocks_filtered.geometry:
+            coords = list(poly.exterior.coords)
+            formatted_coords = [[lat, lon] for lon, lat in coords]
+            output_polygons.append(formatted_coords)
+            
         return {
-            "address": LEKKI_ADDRESS,
             "blocks_count": len(output_polygons),
             "polygons": output_polygons
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}

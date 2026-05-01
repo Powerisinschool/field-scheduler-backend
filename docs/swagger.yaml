@@ -30,12 +30,74 @@ definitions:
     - start_time
     - task_description
     type: object
+  models.Block:
+    properties:
+      card_id:
+        description: Optional association to a card, can be null
+        type: string
+      coordinates:
+        description: 'For Polygon and LineString: [[lon, lat], [lon, lat], ...]'
+        items:
+          items:
+            format: float64
+            type: number
+          type: array
+        type: array
+      geometry_type:
+        description: '"Polygon" or "LineString"'
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  models.Card:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
   models.Conductor:
     properties:
       id:
         type: string
       name:
         type: string
+    type: object
+  models.CreateBlockRequest:
+    properties:
+      coordinates:
+        description: Expecting array of [lon, lat] pairs
+        items:
+          items:
+            format: float64
+            type: number
+          type: array
+        type: array
+      geometry_type:
+        type: string
+      name:
+        type: string
+    required:
+    - coordinates
+    - geometry_type
+    - name
+    type: object
+  models.MapBlocksResponse:
+    properties:
+      blocks_count:
+        type: integer
+      polygons:
+        description: 'Nested array: [Polygon][Point][Lat/Lon]'
+        items:
+          items:
+            items:
+              format: float64
+              type: number
+            type: array
+          type: array
+        type: array
     type: object
   models.ScheduleEntry:
     properties:
@@ -54,22 +116,16 @@ definitions:
       task_description:
         type: string
     type: object
-  services.MapBlocksResponse:
+  models.UpdateScheduleEntryParams:
     properties:
-      address:
+      id:
         type: string
-      blocks_count:
-        type: integer
-      polygons:
-        description: 'Nested array: [Polygon][Point][Lat/Lon]'
-        items:
-          items:
-            items:
-              format: float64
-              type: number
-            type: array
-          type: array
-        type: array
+      schedule_date:
+        type: string
+      start_time:
+        type: string
+      task_description:
+        type: string
     type: object
 info:
   contact: {}
@@ -105,12 +161,106 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/services.MapBlocksResponse'
+            items:
+              $ref: '#/definitions/models.Block'
+            type: array
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handlers.BasicErrorResponse'
-      summary: List blocks in Lekki Phase 1
+      summary: List user-defined blocks
+      tags:
+      - map
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Block creation request
+        in: body
+        name: block
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateBlockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Block'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Create a new user-defined block
+      tags:
+      - map
+  /maps/blocks/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: CSV file with block data
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BasicSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Upload a CSV file to sync blocks
+      tags:
+      - map
+  /maps/cards:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Card'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: List user-defined cards (placeholder)
+      tags:
+      - map
+  /maps/generated-blocks:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MapBlocksResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: List generated blocks in Lekki Phase 1
       tags:
       - map
   /schedules:
@@ -176,6 +326,36 @@ paths:
           schema:
             $ref: '#/definitions/handlers.BasicErrorResponse'
       summary: Create a schedule entry
+      tags:
+      - schedules
+  /schedules/:id:
+    put:
+      consumes:
+      - application/json
+      description: Update an existing schedule entry
+      parameters:
+      - description: Schedule entry details
+        in: body
+        name: default
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateScheduleEntryParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ScheduleEntry'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Update a schedule entry
       tags:
       - schedules
   /schedules/upload:

@@ -170,6 +170,57 @@ func (h *ScheduleHandler) CreateEntry(c *gin.Context) {
 	c.JSON(http.StatusCreated, models.ToScheduleEntryModel(entry, conductors, venues))
 }
 
+// UpdateEntry godoc
+// @Summary Update a schedule entry
+// @Description Update an existing schedule entry
+// @Tags schedules
+// @Accept json
+// @Produce json
+// @Param default body models.UpdateScheduleEntryParams true "Schedule entry details"
+// @Success 200 {object} models.ScheduleEntry
+// @Failure 400 {object} BasicErrorResponse
+// @Failure 500 {object} BasicErrorResponse
+// @Router /schedules/:id [put]
+//func (h *ScheduleHandler) UpdateEntry(c *gin.Context) {
+//	var req models.UpdateScheduleEntryParams
+//	if err := c.ShouldBindJSON(&req); err != nil {
+//		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: err.Error()})
+//		return
+//	}
+//
+//	date, err := models.ToPgDate(req.ScheduleDate)
+//	if err != nil {
+//		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: "invalid date format, use YYYY-MM-DD"})
+//		return
+//	}
+//
+//	startTime, err := models.ToPgTime(req.StartTime)
+//	if err != nil {
+//		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: "invalid time format, use HH:MM:SS"})
+//		return
+//	}
+//
+//	entry, err := h.service.UpdateScheduleEntry(c.Request.Context(), req.ID, date, startTime, req.TaskDescription)
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to update schedule entry"})
+//		return
+//	}
+//
+//	conductors, err := h.conductorService.GetConductorsMap(c.Request.Context())
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to list conductors"})
+//		return
+//	}
+//
+//	venues, err := h.venueService.GetVenuesMap(c.Request.Context())
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to list venues"})
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, models.ToScheduleEntryModel(entry, conductors, venues))
+//}
+
 // UploadPDF godoc
 // @Summary Upload a schedule PDF
 // @Description Upload a PDF file to sync schedule entries. Optionally specify a year to filter the entries.

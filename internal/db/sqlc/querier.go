@@ -11,23 +11,24 @@ import (
 )
 
 type Querier interface {
+	CreateBlock(ctx context.Context, arg CreateBlockParams) (Block, error)
 	CreateConductor(ctx context.Context, fullName string) (pgtype.UUID, error)
 	CreateScheduleEntry(ctx context.Context, arg CreateScheduleEntryParams) (ScheduleEntry, error)
 	CreateVenue(ctx context.Context, arg CreateVenueParams) (pgtype.UUID, error)
 	DeleteScheduleEntriesByDateRange(ctx context.Context, arg DeleteScheduleEntriesByDateRangeParams) error
 	GetConductorByName(ctx context.Context, fullName string) (pgtype.UUID, error)
+	GetOrCreateCard(ctx context.Context, cardName string) (Card, error)
 	GetVenueByName(ctx context.Context, name string) (pgtype.UUID, error)
+	ListBlocks(ctx context.Context) ([]Block, error)
+	ListCards(ctx context.Context) ([]Card, error)
 	ListConductors(ctx context.Context) ([]Conductor, error)
 	ListScheduleEntries(ctx context.Context, arg ListScheduleEntriesParams) ([]ScheduleEntry, error)
-	// -- name: GetScheduleConductorByName :one
-	// SELECT id FROM conductors
-	// WHERE full_name ILIKE $1 LIMIT 1;
-	// -- name: CreateScheduleConductor :one
-	// INSERT INTO conductors (
-	//     full_name
+	// -- name: CreateBlock :one
+	// INSERT INTO blocks (
+	//     block_name, geometry_type, coordinates, card_id
 	// ) VALUES (
-	//     $1
-	// ) RETURNING id;
+	//     $1, $2, $3, $4
+	// ) RETURNING *;
 	ListUniqueTaskDescriptions(ctx context.Context) ([]string, error)
 	ListVenues(ctx context.Context) ([]Venue, error)
 }
