@@ -116,17 +116,6 @@ definitions:
       task_description:
         type: string
     type: object
-  models.UpdateScheduleEntryParams:
-    properties:
-      id:
-        type: string
-      schedule_date:
-        type: string
-      start_time:
-        type: string
-      task_description:
-        type: string
-    type: object
 info:
   contact: {}
 paths:
@@ -326,36 +315,6 @@ paths:
           schema:
             $ref: '#/definitions/handlers.BasicErrorResponse'
       summary: Create a schedule entry
-      tags:
-      - schedules
-  /schedules/:id:
-    put:
-      consumes:
-      - application/json
-      description: Update an existing schedule entry
-      parameters:
-      - description: Schedule entry details
-        in: body
-        name: default
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdateScheduleEntryParams'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.ScheduleEntry'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.BasicErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.BasicErrorResponse'
-      summary: Update a schedule entry
       tags:
       - schedules
   /schedules/upload:

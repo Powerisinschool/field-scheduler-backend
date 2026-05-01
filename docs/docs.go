@@ -318,52 +318,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/schedules/:id": {
-            "put": {
-                "description": "Update an existing schedule entry",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "schedules"
-                ],
-                "summary": "Update a schedule entry",
-                "parameters": [
-                    {
-                        "description": "Schedule entry details",
-                        "name": "default",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.UpdateScheduleEntryParams"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.ScheduleEntry"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.BasicErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.BasicErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/schedules/upload": {
             "post": {
                 "description": "Upload a PDF file to sync schedule entries. Optionally specify a year to filter the entries.",
@@ -573,23 +527,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "location": {
-                    "type": "string"
-                },
-                "schedule_date": {
-                    "type": "string"
-                },
-                "start_time": {
-                    "type": "string"
-                },
-                "task_description": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.UpdateScheduleEntryParams": {
-            "type": "object",
-            "properties": {
-                "id": {
                     "type": "string"
                 },
                 "schedule_date": {

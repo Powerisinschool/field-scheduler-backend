@@ -22,4 +22,9 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Render assigns a PORT environment variable dynamically. 
+# We set a default of 8000 so local testing still works.
+ENV PORT=8000
+
+# Execute uvicorn using the environment variable
+CMD uvicorn main:app --host 0.0.0.0 --port $PORT

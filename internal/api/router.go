@@ -21,7 +21,7 @@ func SetupRouter(scheduleHandler *handlers.ScheduleHandler, conductorHandler *ha
 	docs.SwaggerInfo.Title = "Field Scheduler API"
 	docs.SwaggerInfo.Description = "API for managing field schedules, conductors, and venues."
 	docs.SwaggerInfo.Version = "1.0"
-	docs.SwaggerInfo.Host = "localhost:8080"
+	docs.SwaggerInfo.Host = "field-scheduler-parser-service.onrender.com"
 	docs.SwaggerInfo.BasePath = "/api/v1"
 
 	// Simple health check
