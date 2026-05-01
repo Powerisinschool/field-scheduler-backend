@@ -9,6 +9,7 @@ import (
 	"field-scheduler-backend/internal/api/handlers"
 	"field-scheduler-backend/internal/config"
 	"field-scheduler-backend/internal/core/services"
+	dbx "field-scheduler-backend/internal/db"
 	db "field-scheduler-backend/internal/db/sqlc"
 	python_api "field-scheduler-backend/internal/infrastructure/python_api"
 
@@ -21,6 +22,10 @@ func main() {
 
 	// 2. Setup Database Connection Pool
 	ctx := context.Background()
+
+	log.Println("Running database migrations...")
+	dbx.RunDBMigration(cfg.DBUrl)
+
 	connPool, err := pgxpool.New(ctx, cfg.DBUrl)
 	if err != nil {
 		log.Fatalf("cannot connect to db: %v", err)

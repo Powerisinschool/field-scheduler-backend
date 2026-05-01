@@ -16,7 +16,7 @@ func LoadConfig() Config {
 		port = "8080"
 	}
 
-	dbURL := os.Getenv("DATABASE_URL")
+	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
 		// Default local database URL for development
 		dbURL = "postgres://postgres:password@localhost:5432/field_scheduler?sslmode=disable"
