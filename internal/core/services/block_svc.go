@@ -19,7 +19,7 @@ import (
 type BlockService interface {
 	ListCards(ctx context.Context) ([]models.Card, error)
 	ListBlocks(ctx context.Context) ([]models.Block, error)
-	CreateBlock(ctx context.Context, name string, geometryType models.BlockGeometryType, coordinates [][]float64) (models.Block, error)
+	CreateBlock(ctx context.Context, name string, geometryType models.BlockGeometryType, coordinates [][]float64, cardName *string) (models.Block, error)
 	DeleteBlockByID(ctx context.Context, id string) error
 	DeleteBlocksByCard(ctx context.Context, cardName string) error
 }
@@ -116,14 +116,14 @@ func (b *blockService) ListBlocks(ctx context.Context) ([]models.Block, error) {
 		if numA != numB {
 			return cmp.Compare(numA, numB)
 		}
-		// 2. If numbers are equal, compare the letters (e.g., 10A vs 10B)
+		// 2. If numbers are equal, compare the letters (e.g., 10A vs. 10B)
 		return cmp.Compare(letA, letB)
 	})
 	return blocks, nil
 }
 
 // CreateBlock creates a new block with the given name, geometry type, and coordinates. It validates the geometry type and stores the coordinates as JSONB in the database.
-func (b *blockService) CreateBlock(ctx context.Context, name string, geometryType models.BlockGeometryType, coordinates [][]float64) (models.Block, error) {
+func (b *blockService) CreateBlock(ctx context.Context, name string, geometryType models.BlockGeometryType, coordinates [][]float64, cardName *string) (models.Block, error) {
 	// Validate geometry type
 	if !geometryType.IsValid() {
 		return models.Block{}, fmt.Errorf("invalid geometry type: %s", geometryType)
@@ -135,11 +135,20 @@ func (b *blockService) CreateBlock(ctx context.Context, name string, geometryTyp
 		return models.Block{}, fmt.Errorf("error marshalling coordinates: %w", err)
 	}
 
+	var dbCard db.Card
+	if cardName != nil {
+		dbCard, err = b.repo.GetOrCreateCard(ctx, *cardName)
+		if err != nil {
+			return models.Block{}, fmt.Errorf("error creating card in DB: %w", err)
+		}
+	}
+
 	// Call the repository layer to create the block
 	params := db.CreateBlockParams{
 		BlockName:    name,
 		GeometryType: string(geometryType),
 		Coordinates:  coordsJSON,
+		CardID:       dbCard.ID,
 	}
 	dbBlock, err := b.repo.CreateBlock(ctx, params)
 	if err != nil {
