@@ -29,4 +29,5 @@ type CreateBlockRequest struct {
 	Name         string            `json:"name" binding:"required"`
 	GeometryType BlockGeometryType `json:"geometry_type" binding:"required"`
 	Coordinates  [][]float64       `json:"coordinates" binding:"required"` // Expecting array of [lon, lat] pairs
+	CardID       *string           `json:"card_id,omitempty"`
 }

@@ -97,7 +97,7 @@ func (h *MapHandler) CreateBlock(c *gin.Context) {
 		return
 	}
 
-	block, err := h.blockService.CreateBlock(c, req.Name, req.GeometryType, req.Coordinates)
+	block, err := h.blockService.CreateBlock(c, req.Name, req.GeometryType, req.Coordinates, req.CardID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to create block: " + err.Error()})
 		return
