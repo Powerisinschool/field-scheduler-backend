@@ -10,8 +10,6 @@ import (
 	"slices"
 	"strconv"
 	"unicode"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // NB: geometry types are 'Polygon' for blocks and 'LineString' for roads.
@@ -164,12 +162,12 @@ func (b *blockService) CreateBlock(ctx context.Context, name string, geometryTyp
 }
 
 func (b *blockService) DeleteBlockByID(ctx context.Context, id string) error {
-	var uuid pgtype.UUID
-	err := uuid.Scan(id)
-	if err != nil {
-		return fmt.Errorf("error scanning UUID: %w", err)
-	}
-	err = b.repo.DeleteBlockByID(ctx, uuid)
+	//var uuid pgtype.UUID
+	//err := uuid.Scan(id)
+	//if err != nil {
+	//	return fmt.Errorf("error scanning UUID: %w", err)
+	//}
+	err := b.repo.DeleteBlockByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("error deleting block from DB: %w", err)
 	}
