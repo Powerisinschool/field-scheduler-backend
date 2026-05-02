@@ -106,6 +106,49 @@ func (h *MapHandler) CreateBlock(c *gin.Context) {
 	c.JSON(http.StatusOK, block)
 }
 
+func (h *MapHandler) GetBlock(c *gin.Context) {
+	// TODO: Implement logic to retrieve a specific block by ID
+}
+
+// DeleteBlockByID godoc
+// @Summary Delete a user-defined block
+// @Tags map
+// @Accept json
+// @Produce json
+// @Param id path string true "Block ID"
+// @Success 200 {object} BasicSuccessResponse
+// @Failure 500 {object} BasicErrorResponse
+// @Router /maps/blocks/{id} [delete]
+func (h *MapHandler) DeleteBlockByID(c *gin.Context) {
+	blockId := c.Param("id")
+	err := h.blockService.DeleteBlockByID(c, blockId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to delete block: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, BasicSuccessResponse{Message: "block deleted successfully"})
+}
+
+// DeleteBlocksByCard godoc
+// @Summary Delete all user-defined blocks associated with a card
+// @Tags map
+// @Accept json
+// @Produce json
+// @Param id path string true "Card Name"
+// @Success 200 {object} BasicSuccessResponse
+// @Failure 500 {object} BasicErrorResponse
+// @Router /maps/cards/{id}/blocks [delete]
+func (h *MapHandler) DeleteBlocksByCard(c *gin.Context) {
+	cardName := c.Param("id")
+	err := h.blockService.DeleteBlocksByCard(c, cardName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to delete block: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, BasicSuccessResponse{Message: "block(s) deleted successfully"})
+}
+
 // UploadBlocksCSV godoc
 // @Summary Upload a CSV file to sync blocks
 // @Tags map

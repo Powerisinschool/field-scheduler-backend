@@ -15,6 +15,8 @@ type Querier interface {
 	CreateConductor(ctx context.Context, fullName string) (pgtype.UUID, error)
 	CreateScheduleEntry(ctx context.Context, arg CreateScheduleEntryParams) (ScheduleEntry, error)
 	CreateVenue(ctx context.Context, arg CreateVenueParams) (pgtype.UUID, error)
+	DeleteBlockByID(ctx context.Context, id pgtype.UUID) error
+	DeleteBlocksByCardName(ctx context.Context, cardName string) error
 	DeleteScheduleEntriesByDateRange(ctx context.Context, arg DeleteScheduleEntriesByDateRangeParams) error
 	GetConductorByName(ctx context.Context, fullName string) (pgtype.UUID, error)
 	GetOrCreateCard(ctx context.Context, cardName string) (Card, error)

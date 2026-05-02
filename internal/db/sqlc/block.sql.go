@@ -47,6 +47,24 @@ func (q *Queries) CreateBlock(ctx context.Context, arg CreateBlockParams) (Block
 	return i, err
 }
 
+const deleteBlockByID = `-- name: DeleteBlockByID :exec
+DELETE FROM blocks WHERE id = $1
+`
+
+func (q *Queries) DeleteBlockByID(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteBlockByID, id)
+	return err
+}
+
+const deleteBlocksByCardName = `-- name: DeleteBlocksByCardName :exec
+DELETE FROM blocks USING cards WHERE blocks.card_id = cards.id AND cards.card_name = $1
+`
+
+func (q *Queries) DeleteBlocksByCardName(ctx context.Context, cardName string) error {
+	_, err := q.db.Exec(ctx, deleteBlocksByCardName, cardName)
+	return err
+}
+
 const listBlocks = `-- name: ListBlocks :many
 SELECT id, block_name, geometry_type, coordinates, metadata, created_at, card_id, color FROM blocks
 `

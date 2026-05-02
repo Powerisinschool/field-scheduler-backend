@@ -68,6 +68,8 @@ func SetupRouter(scheduleHandler *handlers.ScheduleHandler, conductorHandler *ha
 			maps.GET("/cards", mapHandler.GetCards)
 			maps.GET("/blocks", mapHandler.GetBlocks)
 			maps.POST("/blocks", mapHandler.CreateBlock)
+			maps.DELETE("/blocks/:id", mapHandler.DeleteBlockByID)
+			maps.DELETE("/cards/:id/blocks", mapHandler.DeleteBlocksByCard)
 
 			maps.POST("/blocks/upload", mapHandler.UploadBlocksCSV)
 

@@ -188,6 +188,30 @@ paths:
       summary: Create a new user-defined block
       tags:
       - map
+  /maps/blocks/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Block ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BasicSuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Delete a user-defined block
+      tags:
+      - map
   /maps/blocks/upload:
     post:
       consumes:
@@ -232,6 +256,30 @@ paths:
           schema:
             $ref: '#/definitions/handlers.BasicErrorResponse'
       summary: List user-defined cards (placeholder)
+      tags:
+      - map
+  /maps/cards/{id}/blocks:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Card Name
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BasicSuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Delete all user-defined blocks associated with a card
       tags:
       - map
   /maps/generated-blocks:

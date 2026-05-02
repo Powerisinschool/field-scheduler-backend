@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strconv"
 	"unicode"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // NB: geometry types are 'Polygon' for blocks and 'LineString' for roads.
@@ -18,6 +20,8 @@ type BlockService interface {
 	ListCards(ctx context.Context) ([]models.Card, error)
 	ListBlocks(ctx context.Context) ([]models.Block, error)
 	CreateBlock(ctx context.Context, name string, geometryType models.BlockGeometryType, coordinates [][]float64) (models.Block, error)
+	DeleteBlockByID(ctx context.Context, id string) error
+	DeleteBlocksByCard(ctx context.Context, cardName string) error
 }
 
 type blockService struct {
@@ -148,4 +152,25 @@ func (b *blockService) CreateBlock(ctx context.Context, name string, geometryTyp
 		GeometryType: models.BlockGeometryType(dbBlock.GeometryType),
 		Coordinates:  coordinates,
 	}, nil
+}
+
+func (b *blockService) DeleteBlockByID(ctx context.Context, id string) error {
+	var uuid pgtype.UUID
+	err := uuid.Scan(id)
+	if err != nil {
+		return fmt.Errorf("error scanning UUID: %w", err)
+	}
+	err = b.repo.DeleteBlockByID(ctx, uuid)
+	if err != nil {
+		return fmt.Errorf("error deleting block from DB: %w", err)
+	}
+	return nil
+}
+
+func (b *blockService) DeleteBlocksByCard(ctx context.Context, cardName string) error {
+	err := b.repo.DeleteBlocksByCardName(ctx, cardName)
+	if err != nil {
+		return fmt.Errorf("error deleting block from DB: %w", err)
+	}
+	return nil
 }

@@ -164,6 +164,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/maps/blocks/{id}": {
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Delete a user-defined block",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Block ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicSuccessResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/maps/cards": {
             "get": {
                 "consumes": [
@@ -181,6 +218,43 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.Card"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/cards/{id}/blocks": {
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Delete all user-defined blocks associated with a card",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Card Name",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicSuccessResponse"
                         }
                     },
                     "500": {
