@@ -48,7 +48,7 @@ func (q *Queries) CreateBlock(ctx context.Context, arg CreateBlockParams) (Block
 }
 
 const deleteBlockByID = `-- name: DeleteBlockByID :exec
-DELETE FROM blocks WHERE id = $1
+DELETE FROM blocks WHERE id = $1 OR block_name = $1
 `
 
 func (q *Queries) DeleteBlockByID(ctx context.Context, id pgtype.UUID) error {
