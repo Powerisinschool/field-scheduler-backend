@@ -30,10 +30,10 @@ func SetupRouter(swaggerHost string, scheduleHandler *handlers.ScheduleHandler, 
 	})
 
 	// Swagger UI route
-	docs := router.Group("/api/docs")
+	apiDocs := router.Group("/api/docs")
 	{
 		// This middleware catches the "/" before the wildcard can conflict with it
-		docs.Use(func(c *gin.Context) {
+		apiDocs.Use(func(c *gin.Context) {
 			if c.Request.URL.Path == "/api/docs" || c.Request.URL.Path == "/api/docs/" {
 				c.Redirect(http.StatusMovedPermanently, "/api/docs/index.html")
 				c.Abort()
@@ -42,7 +42,7 @@ func SetupRouter(swaggerHost string, scheduleHandler *handlers.ScheduleHandler, 
 		})
 
 		// Now the wildcard is the ONLY route defined in this group
-		docs.GET("/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+		apiDocs.GET("/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	}
 
 	api := router.Group("/api/v1")
