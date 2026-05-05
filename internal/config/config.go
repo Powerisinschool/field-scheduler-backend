@@ -8,6 +8,7 @@ type Config struct {
 	ServerAddress    string
 	DBUrl            string
 	ParserServiceUrl string
+	SwaggerHost      string
 }
 
 func LoadConfig() Config {
@@ -27,9 +28,15 @@ func LoadConfig() Config {
 		parserURL = "http://localhost:8000"
 	}
 
+	swaggerHost := os.Getenv("SWAGGER_HOST")
+	if swaggerHost == "" {
+		swaggerHost = "localhost:" + port
+	}
+
 	return Config{
 		ServerAddress:    ":" + port,
 		DBUrl:            dbURL,
 		ParserServiceUrl: parserURL,
+		SwaggerHost:      swaggerHost,
 	}
 }

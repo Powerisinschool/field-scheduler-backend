@@ -547,6 +547,9 @@ const docTemplate = `{
                 "name"
             ],
             "properties": {
+                "card_id": {
+                    "type": "string"
+                },
                 "coordinates": {
                     "description": "Expecting array of [lon, lat] pairs",
                     "type": "array",

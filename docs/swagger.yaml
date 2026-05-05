@@ -67,6 +67,8 @@ definitions:
     type: object
   models.CreateBlockRequest:
     properties:
+      card_id:
+        type: string
       coordinates:
         description: Expecting array of [lon, lat] pairs
         items:

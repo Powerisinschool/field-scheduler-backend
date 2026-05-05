@@ -13,7 +13,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
 )
 
-func SetupRouter(scheduleHandler *handlers.ScheduleHandler, conductorHandler *handlers.ConductorHandler, venueHandler *handlers.VenueHandler, mapHandler *handlers.MapHandler) *gin.Engine {
+func SetupRouter(swaggerHost string, scheduleHandler *handlers.ScheduleHandler, conductorHandler *handlers.ConductorHandler, venueHandler *handlers.VenueHandler, mapHandler *handlers.MapHandler) *gin.Engine {
 	router := gin.Default()
 
 	router.Use(cors.Default())
@@ -21,7 +21,7 @@ func SetupRouter(scheduleHandler *handlers.ScheduleHandler, conductorHandler *ha
 	docs.SwaggerInfo.Title = "Field Scheduler API"
 	docs.SwaggerInfo.Description = "API for managing field schedules, conductors, and venues."
 	docs.SwaggerInfo.Version = "1.0"
-	docs.SwaggerInfo.Host = "field-scheduler-backend.onrender.com"
+	docs.SwaggerInfo.Host = swaggerHost
 	docs.SwaggerInfo.BasePath = "/api/v1"
 
 	// Simple health check

@@ -52,7 +52,7 @@ func main() {
 	mapHandler := handlers.NewMapHandler(parserService, blockService)
 
 	// 7. Setup Router
-	router := api.SetupRouter(scheduleHandler, conductorHandler, venueHandler, mapHandler)
+	router := api.SetupRouter(cfg.SwaggerHost, scheduleHandler, conductorHandler, venueHandler, mapHandler)
 
 	// 8. Start Server
 	log.Printf("Starting server on %s", cfg.ServerAddress)

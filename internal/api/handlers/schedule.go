@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 
@@ -251,7 +252,12 @@ func (h *ScheduleHandler) UploadPDF(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to open uploaded file"})
 		return
 	}
-	defer fileContent.Close()
+	defer func(fileContent multipart.File) {
+		err := fileContent.Close()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to close uploaded file"})
+		}
+	}(fileContent)
 
 	fileBytes, err := io.ReadAll(fileContent)
 	if err != nil {

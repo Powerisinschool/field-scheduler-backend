@@ -61,7 +61,7 @@ func (s *ParserService) GetMapBlocks(ctx context.Context) (*models.MapBlocksResp
 }
 
 func (s *ParserService) GetParsedPDF(ctx context.Context, file []byte) ([]models.ParsedEntry, error) {
-	return []models.ParsedEntry{}, nil
+	return s.client.CallParsePDF(ctx, file)
 }
 
 func (s *ParserService) SyncBlocksFromCSV(ctx context.Context, csvData []byte) error {

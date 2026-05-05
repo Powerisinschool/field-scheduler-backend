@@ -35,8 +35,14 @@ func (c *Client) CallParsePDF(ctx context.Context, data []byte) ([]models.Parsed
 	if err != nil {
 		return nil, err
 	}
-	part.Write(data)
-	writer.Close()
+	_, err = part.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
 
 	// Make the request to the Python service (assume endpoint is /parse/pdf)
 	req, err := http.NewRequestWithContext(ctx, "POST", c.BaseURL+"/parse/pdf", body)
@@ -49,7 +55,12 @@ func (c *Client) CallParsePDF(ctx context.Context, data []byte) ([]models.Parsed
 	if err != nil {
 		return nil, fmt.Errorf("failed to reach python service: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println("Error closing response body:", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -74,7 +85,12 @@ func (c *Client) CallFetchBlocks(ctx context.Context) (*models.MapBlocksResponse
 	if err != nil {
 		return nil, fmt.Errorf("failed to reach python service: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println("Error closing response body:", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("python service returned %d", resp.StatusCode)
@@ -101,7 +117,12 @@ func (c *Client) CallFetchBlockByStreets(ctx context.Context, streets []string) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println("Error closing response body:", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("python service returned status %d", resp.StatusCode)
