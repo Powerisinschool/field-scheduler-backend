@@ -2,8 +2,7 @@ package handlers
 
 import (
 	"field-scheduler-backend/internal/core/services"
-
-	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type ConductorHandler struct {
@@ -25,12 +24,12 @@ func NewConductorHandler(service services.ConductorService) *ConductorHandler {
 // @Success 200 {array} models.Conductor
 // @Failure 500 {object} BasicErrorResponse
 // @Router /conductors [get]
-func (h *ConductorHandler) ListConductors(c *gin.Context) {
-	conductors, err := h.service.ListConductors(c.Request.Context())
+func (h *ConductorHandler) ListConductors(w http.ResponseWriter, r *http.Request) {
+	conductors, err := h.service.ListConductors(r.Context())
 	if err != nil {
-		c.JSON(500, BasicErrorResponse{Error: "failed to retrieve conductors"})
+		writeError(w, http.StatusInternalServerError, "failed to retrieve conductors")
 		return
 	}
 
-	c.JSON(200, conductors)
+	writeJSON(w, http.StatusOK, conductors)
 }

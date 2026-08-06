@@ -227,6 +227,86 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Create a new user-defined card",
+                "parameters": [
+                    {
+                        "description": "Card creation request",
+                        "name": "card",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateCardRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/maps/cards/{id}": {
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Delete a user-defined card",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Card ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicSuccessResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/maps/cards/{id}/blocks": {
@@ -294,6 +374,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/maps/import": {
+            "post": {
+                "description": "Accepts a JSON payload containing arrays of cards and blocks to restore local database states.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Import data into the database",
+                "parameters": [
+                    {
+                        "description": "Data import request",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.DataImportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/schedules": {
             "get": {
                 "description": "Get a list of schedule entries for a given date range",
@@ -331,6 +457,50 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/models.ScheduleEntry"
                             }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update multiple schedule entries in a single request",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedules"
+                ],
+                "summary": "Batch Update a schedule entry",
+                "parameters": [
+                    {
+                        "description": "Schedule entry details",
+                        "name": "default",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BatchUpdateScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicSuccessResponse"
                         }
                     },
                     "400": {
@@ -441,6 +611,38 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/venues": {
+            "get": {
+                "description": "retrieves a list of all available venues and responds with a JSON-encoded array of venue objects.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "venue"
+                ],
+                "summary": "List venues",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Venue"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BasicErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -459,6 +661,28 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "default": "Operation successful"
+                }
+            }
+        },
+        "handlers.BatchUpdateScheduleRequest": {
+            "type": "object",
+            "properties": {
+                "arrangements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ScheduleEntry"
+                    }
+                },
+                "date": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CreateCardRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -484,6 +708,23 @@ const docTemplate = `{
                     "description": "Expecting \"task description\"",
                     "type": "string",
                     "default": "task description"
+                }
+            }
+        },
+        "handlers.DataImportRequest": {
+            "type": "object",
+            "properties": {
+                "blocks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Block"
+                    }
+                },
+                "cards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Card"
+                    }
                 }
             }
         },
@@ -613,6 +854,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "task_description": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Venue": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }

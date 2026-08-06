@@ -4,79 +4,56 @@ import (
 	"field-scheduler-backend/internal/api/handlers"
 	"net/http"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-
 	docs "field-scheduler-backend/docs" // swagger docs
 
-	swaggerfiles "github.com/swaggo/files"     // swagger embed files
-	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func SetupRouter(swaggerHost string, scheduleHandler *handlers.ScheduleHandler, conductorHandler *handlers.ConductorHandler, venueHandler *handlers.VenueHandler, mapHandler *handlers.MapHandler) *gin.Engine {
-	router := gin.Default()
+func SetupRouter(swaggerHost string, scheduleHandler *handlers.ScheduleHandler, conductorHandler *handlers.ConductorHandler, venueHandler *handlers.VenueHandler, mapHandler *handlers.MapHandler) *http.ServeMux {
+	mainMux := http.NewServeMux()
+	const basePath = "/api/v1"
 
-	router.Use(cors.Default())
+	//router.Use(cors.Default())
 
 	docs.SwaggerInfo.Title = "Field Scheduler API"
 	docs.SwaggerInfo.Description = "API for managing field schedules, conductors, and venues."
 	docs.SwaggerInfo.Version = "1.0"
 	docs.SwaggerInfo.Host = swaggerHost
-	docs.SwaggerInfo.BasePath = "/api/v1"
+	docs.SwaggerInfo.BasePath = basePath
 
-	// Simple health check
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	mainMux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		//w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"status": "ok"}`))
+		if err != nil {
+			return
+		}
 	})
+	mainMux.HandleFunc("GET /api/docs/", httpSwagger.Handler())
 
-	// Swagger UI route
-	apiDocs := router.Group("/api/docs")
-	{
-		// This middleware catches the "/" before the wildcard can conflict with it
-		apiDocs.Use(func(c *gin.Context) {
-			if c.Request.URL.Path == "/api/docs" || c.Request.URL.Path == "/api/docs/" {
-				c.Redirect(http.StatusMovedPermanently, "/api/docs/index.html")
-				c.Abort()
-				return
-			}
-		})
-
-		// Now the wildcard is the ONLY route defined in this group
-		apiDocs.GET("/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+	api := func(method, pattern string, handler http.HandlerFunc) {
+		fullPath := method + " " + basePath + pattern
+		mainMux.HandleFunc(fullPath, handler)
 	}
 
-	api := router.Group("/api/v1")
-	{
-		schedules := api.Group("/schedules")
-		{
-			schedules.GET("/", scheduleHandler.ListEntries)
-			schedules.POST("/", scheduleHandler.CreateEntry)
-			//schedules.PUT("/:id", scheduleHandler.UpdateEntry)
+	api(http.MethodGet, "/schedules/", scheduleHandler.ListEntries)
+	api(http.MethodPost, "/schedules/", scheduleHandler.CreateEntry)
+	api(http.MethodPut, "/schedules/", scheduleHandler.BatchUpdateSchedules)
+	api(http.MethodPost, "/schedules/upload/", scheduleHandler.UploadPDF)
 
-			schedules.POST("/upload", scheduleHandler.UploadPDF)
-		}
-		conductors := api.Group("/conductors")
-		{
-			conductors.GET("/", conductorHandler.ListConductors)
-		}
-		venues := api.Group("/venues")
-		{
-			venues.GET("/", venueHandler.ListVenues)
-		}
-		maps := api.Group("/maps")
-		{
-			maps.GET("/cards", mapHandler.GetCards)
-			maps.GET("/blocks", mapHandler.GetBlocks)
-			maps.POST("/blocks", mapHandler.CreateBlock)
-			maps.DELETE("/blocks/:id", mapHandler.DeleteBlockByID)
-			maps.DELETE("/cards/:id/blocks", mapHandler.DeleteBlocksByCard)
+	api(http.MethodGet, "/conductors/", conductorHandler.ListConductors)
+	api(http.MethodGet, "/venues/", venueHandler.ListVenues)
 
-			maps.POST("/blocks/upload", mapHandler.UploadBlocksCSV)
+	api(http.MethodGet, "/maps/cards/", mapHandler.GetCards)
+	api(http.MethodPost, "/maps/cards/", mapHandler.CreateCard)
+	api(http.MethodDelete, "/maps/cards/{id}/", mapHandler.DeleteCardByID)
+	api(http.MethodGet, "/maps/blocks/", mapHandler.GetBlocks)
+	api(http.MethodPost, "/maps/blocks/", mapHandler.CreateBlock)
+	api(http.MethodDelete, "/maps/cards/{id}/blocks/", mapHandler.DeleteBlocksByCard)
+	api(http.MethodDelete, "/maps/blocks/{id}/", mapHandler.DeleteBlockByID)
+	api(http.MethodPost, "/maps/blocks/upload/", mapHandler.UploadBlocksCSV)
+	api(http.MethodGet, "/maps/generated-blocks/", mapHandler.GetGeneratedBlocks)
+	api(http.MethodPost, "/maps/import/", mapHandler.ImportData)
 
-			maps.GET("/generated-blocks", mapHandler.GetGeneratedBlocks)
-
-		}
-	}
-
-	return router
+	return mainMux
 }

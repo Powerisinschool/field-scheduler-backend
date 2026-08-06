@@ -11,6 +11,20 @@ definitions:
         default: Operation successful
         type: string
     type: object
+  handlers.BatchUpdateScheduleRequest:
+    properties:
+      arrangements:
+        items:
+          $ref: '#/definitions/models.ScheduleEntry'
+        type: array
+      date:
+        type: string
+    type: object
+  handlers.CreateCardRequest:
+    properties:
+      name:
+        type: string
+    type: object
   handlers.CreateEntryRequest:
     properties:
       schedule_date:
@@ -29,6 +43,17 @@ definitions:
     - schedule_date
     - start_time
     - task_description
+    type: object
+  handlers.DataImportRequest:
+    properties:
+      blocks:
+        items:
+          $ref: '#/definitions/models.Block'
+        type: array
+      cards:
+        items:
+          $ref: '#/definitions/models.Card'
+        type: array
     type: object
   models.Block:
     properties:
@@ -116,6 +141,13 @@ definitions:
       start_time:
         type: string
       task_description:
+        type: string
+    type: object
+  models.Venue:
+    properties:
+      id:
+        type: string
+      name:
         type: string
     type: object
 info:
@@ -260,6 +292,58 @@ paths:
       summary: List user-defined cards (placeholder)
       tags:
       - map
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Card creation request
+        in: body
+        name: card
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateCardRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BasicSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Create a new user-defined card
+      tags:
+      - map
+  /maps/cards/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Card ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BasicSuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Delete a user-defined card
+      tags:
+      - map
   /maps/cards/{id}/blocks:
     delete:
       consumes:
@@ -300,6 +384,37 @@ paths:
           schema:
             $ref: '#/definitions/handlers.BasicErrorResponse'
       summary: List generated blocks in Lekki Phase 1
+      tags:
+      - map
+  /maps/import:
+    post:
+      consumes:
+      - application/json
+      description: Accepts a JSON payload containing arrays of cards and blocks to
+        restore local database states.
+      parameters:
+      - description: Data import request
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.DataImportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BasicSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Import data into the database
       tags:
       - map
   /schedules:
@@ -367,6 +482,35 @@ paths:
       summary: Create a schedule entry
       tags:
       - schedules
+    put:
+      consumes:
+      - application/json
+      description: Update multiple schedule entries in a single request
+      parameters:
+      - description: Schedule entry details
+        in: body
+        name: default
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.BatchUpdateScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BasicSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: Batch Update a schedule entry
+      tags:
+      - schedules
   /schedules/upload:
     post:
       consumes:
@@ -401,4 +545,26 @@ paths:
       summary: Upload a schedule PDF
       tags:
       - schedules
+  /venues:
+    get:
+      consumes:
+      - application/json
+      description: retrieves a list of all available venues and responds with a JSON-encoded
+        array of venue objects.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Venue'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.BasicErrorResponse'
+      summary: List venues
+      tags:
+      - venue
 swagger: "2.0"

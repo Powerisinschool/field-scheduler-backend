@@ -2,8 +2,7 @@ package handlers
 
 import (
 	"field-scheduler-backend/internal/core/services"
-
-	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type VenueHandler struct {
@@ -16,12 +15,21 @@ func NewVenueHandler(service services.VenueService) *VenueHandler {
 	}
 }
 
-func (h *VenueHandler) ListVenues(c *gin.Context) {
-	venues, err := h.service.ListVenues(c.Request.Context())
+// ListVenues godoc
+// @Summary List venues
+// @Description retrieves a list of all available venues and responds with a JSON-encoded array of venue objects.
+// @Tags venue
+// @Accept json
+// @Produce json
+// @Success 200 {array} models.Venue
+// @Failure 500 {object} BasicErrorResponse
+// @Router /venues [get]
+func (h *VenueHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
+	venues, err := h.service.ListVenues(r.Context())
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to retrieve venues"})
+		writeError(w, http.StatusInternalServerError, "failed to retrieve venues")
 		return
 	}
 
-	c.JSON(200, venues)
+	writeJSON(w, http.StatusOK, venues)
 }

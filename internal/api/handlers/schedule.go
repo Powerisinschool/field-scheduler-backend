@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -10,7 +12,6 @@ import (
 	"field-scheduler-backend/internal/core/services"
 	db "field-scheduler-backend/internal/db/sqlc"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -31,13 +32,33 @@ func NewScheduleHandler(service services.ScheduleService, conductorService servi
 }
 
 type ListEntriesRequest struct {
-	StartDate string `form:"start_date" binding:"required"` // Expecting YYYY-MM-DD
-	EndDate   string `form:"end_date" binding:"required"`   // Expecting YYYY-MM-DD
+	StartDate pgtype.Date `form:"start_date" binding:"required"` // Expecting YYYY-MM-DD
+	EndDate   pgtype.Date `form:"end_date" binding:"required"`   // Expecting YYYY-MM-DD
 }
 
-// type ListEntriesResponse struct {
-// 	Entries []models.ScheduleEntry `json:"entries"`
-// }
+func parseScheduleEntriesQuery(r *http.Request) (ListEntriesRequest, error) {
+	query := r.URL.Query()
+	var req ListEntriesRequest
+	startDate := query.Get("start_date")
+	endDate := query.Get("end_date")
+
+	if startDate == "" || endDate == "" {
+		return ListEntriesRequest{}, errors.New("start_date and end_date are required query parameters: ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD")
+	}
+
+	pgStartDate, err := models.ToPgDate(startDate)
+	if err != nil {
+		return ListEntriesRequest{}, errors.New("invalid start date format, use YYYY-MM-DD")
+	}
+	req.StartDate = pgStartDate
+	pgEndDate, err := models.ToPgDate(endDate)
+	if err != nil {
+		return ListEntriesRequest{}, errors.New("invalid end date format, use YYYY-MM-DD")
+	}
+	req.EndDate = pgEndDate
+
+	return req, nil
+}
 
 // ListEntries godoc
 // @Summary List schedule entries
@@ -51,11 +72,11 @@ type ListEntriesRequest struct {
 // @Failure 400 {object} BasicErrorResponse
 // @Failure 500 {object} BasicErrorResponse
 // @Router /schedules [get]
-func (h *ScheduleHandler) ListEntries(c *gin.Context) {
-	var req ListEntriesRequest
+func (h *ScheduleHandler) ListEntries(w http.ResponseWriter, r *http.Request) {
 	// Use ShouldBindQuery to parse URL parameters (e.g., ?user_id=123&schedule_date=2026-03-26)
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: err.Error()})
+	req, err := parseScheduleEntriesQuery(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -65,22 +86,10 @@ func (h *ScheduleHandler) ListEntries(c *gin.Context) {
 	// 	return
 	// }
 
-	pgStartDate, err := models.ToPgDate(req.StartDate)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: "invalid start date format, use YYYY-MM-DD"})
-		return
-	}
-
-	pgEndDate, err := models.ToPgDate(req.EndDate)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: "invalid end date format, use YYYY-MM-DD"})
-		return
-	}
-
 	// Fetch from service
-	entries, err := h.service.ListScheduleEntries(c.Request.Context(), nil, pgStartDate, pgEndDate)
+	entries, err := h.service.ListScheduleEntries(r.Context(), nil, req.StartDate, req.EndDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to list schedule entries"})
+		writeError(w, http.StatusInternalServerError, "failed to list schedule entries")
 		return
 	}
 
@@ -89,19 +98,19 @@ func (h *ScheduleHandler) ListEntries(c *gin.Context) {
 		entries = []db.ScheduleEntry{}
 	}
 
-	conductors, err := h.conductorService.GetConductorsMap(c.Request.Context())
+	conductors, err := h.conductorService.GetConductorsMap(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to list conductors"})
+		writeError(w, http.StatusInternalServerError, "failed to list conductors")
 		return
 	}
 
-	venues, err := h.venueService.GetVenuesMap(c.Request.Context())
+	venues, err := h.venueService.GetVenuesMap(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to list venues"})
+		writeError(w, http.StatusInternalServerError, "failed to list venues")
 		return
 	}
 
-	c.JSON(http.StatusOK, models.ToScheduleEntryModels(entries, conductors, venues))
+	writeJSON(w, http.StatusOK, models.ToScheduleEntryModels(entries, conductors, venues))
 }
 
 // Request DTO (Data Transfer Object) for Gin JSON Validation
@@ -122,10 +131,12 @@ type CreateEntryRequest struct {
 // @Failure 400 {object} BasicErrorResponse
 // @Failure 500 {object} BasicErrorResponse
 // @Router /schedules [post]
-func (h *ScheduleHandler) CreateEntry(c *gin.Context) {
+func (h *ScheduleHandler) CreateEntry(w http.ResponseWriter, r *http.Request) {
 	var req CreateEntryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: err.Error()})
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -139,88 +150,66 @@ func (h *ScheduleHandler) CreateEntry(c *gin.Context) {
 
 	date, err := models.ToPgDate(req.ScheduleDate)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: "invalid date format, use YYYY-MM-DD"})
+		writeError(w, http.StatusBadRequest, "invalid date format, use YYYY-MM-DD")
 		return
 	}
 
 	startTime, err := models.ToPgTime(req.StartTime)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: "invalid time format, use HH:MM:SS"})
+		writeError(w, http.StatusBadRequest, "invalid time format, use HH:MM:SS")
 		return
 	}
 
 	// Pass to Service Layer
-	entry, err := h.service.CreateScheduleEntry(c.Request.Context(), pgtype.UUID{}, date, startTime, req.TaskDescription)
+	entry, err := h.service.CreateScheduleEntry(r.Context(), pgtype.UUID{}, date, startTime, req.TaskDescription)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to create schedule entry"})
+		writeError(w, http.StatusInternalServerError, "failed to create schedule entry")
 		return
 	}
 
-	conductors, err := h.conductorService.GetConductorsMap(c.Request.Context())
+	conductors, err := h.conductorService.GetConductorsMap(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to list conductors"})
+		writeError(w, http.StatusInternalServerError, "failed to list conductors")
 		return
 	}
 
-	venues, err := h.venueService.GetVenuesMap(c.Request.Context())
+	venues, err := h.venueService.GetVenuesMap(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to list venues"})
+		writeError(w, http.StatusInternalServerError, "failed to list venues")
 		return
 	}
 
-	c.JSON(http.StatusCreated, models.ToScheduleEntryModel(entry, conductors, venues))
+	writeJSON(w, http.StatusCreated, models.ToScheduleEntryModel(entry, conductors, venues))
 }
 
-// UpdateEntry godoc
-// @Summary Update a schedule entry
-// @Description Update an existing schedule entry
+// BatchUpdateSchedules godoc
+// @Summary Batch Update a schedule entry
+// @Description Update multiple schedule entries in a single request
 // @Tags schedules
 // @Accept json
 // @Produce json
-// @Param default body models.UpdateScheduleEntryParams true "Schedule entry details"
-// @Success 200 {object} models.ScheduleEntry
+// @Param default body BatchUpdateScheduleRequest true "Schedule entry details"
+// @Success 200 {object} BasicSuccessResponse
 // @Failure 400 {object} BasicErrorResponse
 // @Failure 500 {object} BasicErrorResponse
-// @Router /schedules/:id [put]
-//func (h *ScheduleHandler) UpdateEntry(c *gin.Context) {
-//	var req models.UpdateScheduleEntryParams
-//	if err := c.ShouldBindJSON(&req); err != nil {
-//		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: err.Error()})
-//		return
-//	}
-//
-//	date, err := models.ToPgDate(req.ScheduleDate)
-//	if err != nil {
-//		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: "invalid date format, use YYYY-MM-DD"})
-//		return
-//	}
-//
-//	startTime, err := models.ToPgTime(req.StartTime)
-//	if err != nil {
-//		c.JSON(http.StatusBadRequest, BasicErrorResponse{Error: "invalid time format, use HH:MM:SS"})
-//		return
-//	}
-//
-//	entry, err := h.service.UpdateScheduleEntry(c.Request.Context(), req.ID, date, startTime, req.TaskDescription)
-//	if err != nil {
-//		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to update schedule entry"})
-//		return
-//	}
-//
-//	conductors, err := h.conductorService.GetConductorsMap(c.Request.Context())
-//	if err != nil {
-//		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to list conductors"})
-//		return
-//	}
-//
-//	venues, err := h.venueService.GetVenuesMap(c.Request.Context())
-//	if err != nil {
-//		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: "failed to list venues"})
-//		return
-//	}
-//
-//	c.JSON(http.StatusOK, models.ToScheduleEntryModel(entry, conductors, venues))
-//}
+// @Router /schedules [put]
+func (h *ScheduleHandler) BatchUpdateSchedules(w http.ResponseWriter, r *http.Request) {
+	var req BatchUpdateScheduleRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON payload: "+err.Error())
+		return
+	}
+
+	// TODO: Pass the parsed entries to the service layer for batch update
+	//err := h.service.BatchUpdate(r.Context(), req.Date, req.Arrangements)
+	//if err != nil {
+	//	writeError(w, http.StatusInternalServerError, "failed to update schedule entries")
+	//	return
+	//}
+
+	w.WriteHeader(http.StatusOK)
+}
 
 // UploadPDF godoc
 // @Summary Upload a schedule PDF
@@ -234,48 +223,60 @@ func (h *ScheduleHandler) CreateEntry(c *gin.Context) {
 // @Failure 400 {object} BasicErrorResponse
 // @Failure 500 {object} BasicErrorResponse
 // @Router /schedules/upload [post]
-func (h *ScheduleHandler) UploadPDF(c *gin.Context) {
+func (h *ScheduleHandler) UploadPDF(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		writeError(w, http.StatusBadRequest, "failed to parse multipart form")
+		return
+	}
+
 	// Get the optional year parameter
-	yearStr := c.PostForm("year")
+	yearStr := r.FormValue("year")
 	year, _ := strconv.Atoi(yearStr) // defaults to 0 if empty or invalid
 
 	// Extract the file from the request
-	file, err := c.FormFile("file")
+	file, _, err := r.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no file uploaded"})
+		writeError(w, http.StatusBadRequest, "no file uploaded")
 		return
 	}
 
 	// Open the file
-	fileContent, err := file.Open()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to open uploaded file"})
-		return
-	}
-	defer func(fileContent multipart.File) {
-		err := fileContent.Close()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to close uploaded file"})
-		}
-	}(fileContent)
+	//fileContent, err := file.Open()
+	//if err != nil {
+	//	writeError(w, http.StatusInternalServerError, "failed to open uploaded file")
+	//	return
+	//}
+	//defer func(fileContent multipart.File) {
+	//	err := fileContent.Close()
+	//	if err != nil {
+	//		writeError(w, http.StatusInternalServerError, "failed to close uploaded file")
+	//	}
+	//}(fileContent)
 
-	fileBytes, err := io.ReadAll(fileContent)
+	defer func(file multipart.File) {
+		err := file.Close()
+		if err != nil {
+			// do nothing
+		}
+	}(file)
+
+	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read file contents"})
+		writeError(w, http.StatusInternalServerError, "failed to read file contents")
 		return
 	}
 
 	// Call the service to sync the schedule
-	entries, err := h.parserService.GetParsedPDF(c.Request.Context(), fileBytes)
+	entries, err := h.parserService.GetParsedPDF(r.Context(), fileBytes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: err.Error()})
+		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = h.service.SyncScheduleFromParsedEntries(c.Request.Context(), entries, year)
+	err = h.service.SyncScheduleFromParsedEntries(r.Context(), entries, year)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, BasicErrorResponse{Error: err.Error()})
+		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, BasicSuccessResponse{Message: "schedule successfully synced from PDF"})
+	writeJSON(w, http.StatusOK, BasicSuccessResponse{Message: "schedule successfully synced from PDF"})
 }

@@ -56,7 +56,8 @@ func main() {
 
 	// 8. Start Server
 	log.Printf("Starting server on %s", cfg.ServerAddress)
-	if err := router.Run(cfg.ServerAddress); err != nil {
-		log.Fatalf("cannot start server: %v", err)
-	}
+	log.Fatal(http.ListenAndServe(cfg.ServerAddress, router))
+	//if err := router.Run(cfg.ServerAddress); err != nil {
+	//	log.Fatalf("cannot start server: %v", err)
+	//}
 }
